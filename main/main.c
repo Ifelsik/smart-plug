@@ -1,17 +1,19 @@
 #include "app.h"
 
-// Определяем пины
-#define MODEM_PWR_EN 14
-#define MODEM_TX 18
-#define MODEM_RX 17
-#define MODEM_CTS 11
-#define MODEM_RTS 12
-#define MODEM_UART_PORT    UART_NUM_1
+// Управляющие выводы модема
+#define MODEM_PWR_KEY_PIN  14   // PWRKEY (через инвертор VT2)
+#define MODEM_TX           9    // ESP TX -> модем RXD (через TXS0104E)
+#define MODEM_RX           10   // ESP RX <- модем TXD (через TXS0104E)
+#define MODEM_CTS          11
+#define MODEM_RTS          12
+#define PIN_DCDC_EN        13   // EN преобразователя MP2307 (питание модема)
 
-#define PIN_DCDC_EN 13
+#define LED_PIN            18   // индикаторный светодиод VD9
+#define RELAY_PIN          40   // реле K1 (через VT3)
 
-#define LED_PIN 18
-#define RELAY_PIN 40
+// GPIO кнопки. Пока не разведён в прошивке: -1 отключает компонент кнопки.
+// TODO: указать реальный GPIO кнопки по схеме (SB1/SB3) и заменить -1.
+#define BUTTON_PIN         (-1)
 
 void app_main(void) {
     const app_config_t config = {
@@ -22,15 +24,16 @@ void app_main(void) {
             .pin_rts = MODEM_RTS,
             .apn = "internet.tele2.ru"
         },
+        .modem_pwr_key_pin = MODEM_PWR_KEY_PIN,
         .dc_dc_enable_pin = PIN_DCDC_EN,
-        .modem_pwr_key_pin = MODEM_PWR_EN,
         .mqtt_config = {
             .uri = "mqtt://broker.hivemq.com:1883",
             .cmd_topic = "thesis/plug/command",
             .resp_topic = "thesis/plug/state"
         },
+        .relay_pin = RELAY_PIN,
         .indicator_pin = LED_PIN,
-        .relay_pin = RELAY_PIN
+        .button_pin = BUTTON_PIN
     };
 
     app_start(&config);

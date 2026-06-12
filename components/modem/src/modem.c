@@ -48,8 +48,20 @@ modem_handle_t modem_driver_init(const modem_config_t *config) {
     }
 
     ctx->event_group = xEventGroupCreate();
+    if (ctx->event_group == NULL) {
+        ESP_LOGE(TAG, "Не удалось создать группу событий");
+        free(ctx);
+        return NULL;
+    }
+
     esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
     ctx->netif = esp_netif_new(&netif_ppp_config);
+    if (ctx->netif == NULL) {
+        ESP_LOGE(TAG, "Не удалось создать PPP netif");
+        vEventGroupDelete(ctx->event_group);
+        free(ctx);
+        return NULL;
+    }
 
     esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &on_ip_event, ctx);
 
@@ -90,8 +102,11 @@ esp_err_t modem_driver_start_network(modem_handle_t handle, uint32_t timeout_ms)
         return ESP_FAIL;
     }
 
-    esp_err_t err = esp_modem_set_mode(handle->dce, ESP_MODEM_MODE_DATA);
+    // CMUX вместо чистого DATA: PPP и AT-команды (например, запрос RSSI)
+    // работают одновременно по виртуальным каналам мультиплексора.
+    esp_err_t err = esp_modem_set_mode(handle->dce, ESP_MODEM_MODE_CMUX);
     if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Не удалось перевести модем в режим CMUX: %s", esp_err_to_name(err));
         return err;
     }
 

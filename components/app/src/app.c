@@ -1,6 +1,7 @@
 #include "app.h"
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "driver/gpio.h"
 
@@ -9,46 +10,47 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 
+#include "led.h"
+#include "button.h"
 #include "mqtt.h"
-#include "command_handler.h"
+#include "controller.h"
 
 #define MODEM_DC_DC_EN_DELAY_MS 1500
 #define MODEM_PWR_KEY_DELAY_MS 2000
 #define MODEM_START_NETWORK_TIMEOUT_MS 30000
 
-#define LED_BLINK_SYSTEM_INIT_DELAY_MS 200
+static const char *TAG = "APP";
 
-const char *TAG = "APP";
+// ---- Инициализация периферии ------------------------------------------------
 
-modem_handle_t modem_app_start(const app_config_t *config) {
+static modem_handle_t modem_app_start(const app_config_t *config) {
     ESP_LOGI(TAG, "Инициализация модема");
-    if (config == NULL) {
-        ESP_LOGE(TAG, "modem_app_start: конфиг не передан! Завершение.");
-        abort();
-    }
 
     gpio_set_direction(config->modem_pwr_key_pin, GPIO_MODE_OUTPUT);
     gpio_set_direction(config->dc_dc_enable_pin, GPIO_MODE_OUTPUT);
     gpio_set_level(config->modem_pwr_key_pin, 0);
     gpio_set_level(config->dc_dc_enable_pin, 0);
 
-    // включаем DC-DC преобразователь
+    // включаем DC-DC преобразователь (питание модема 3.8В)
     gpio_set_level(config->dc_dc_enable_pin, 1);
     vTaskDelay(pdMS_TO_TICKS(MODEM_DC_DC_EN_DELAY_MS));
 
-    // подаем сигнал на включение модема
+    // подаём импульс на PWRKEY для включения модема
     gpio_set_level(config->modem_pwr_key_pin, 1);
     vTaskDelay(pdMS_TO_TICKS(MODEM_PWR_KEY_DELAY_MS));
     gpio_set_level(config->modem_pwr_key_pin, 0);
 
-    modem_handle_t modem =  modem_driver_init(&config->modem_config);
-
+    modem_handle_t modem = modem_driver_init(&config->modem_config);
     if (modem == NULL) {
         ESP_LOGE(TAG, "Не удалось инициализировать модем!");
-        abort();
+        return NULL;
     }
 
-    ESP_ERROR_CHECK(modem_driver_start_network(modem, MODEM_START_NETWORK_TIMEOUT_MS));
+    if (modem_driver_start_network(modem, MODEM_START_NETWORK_TIMEOUT_MS) != ESP_OK) {
+        ESP_LOGE(TAG, "Не удалось поднять сеть модема!");
+        modem_driver_destroy(modem);
+        return NULL;
+    }
 
     int signal_quality = 0;
     if (modem_driver_get_signal_quality(modem, &signal_quality) == ESP_OK) {
@@ -60,10 +62,31 @@ modem_handle_t modem_app_start(const app_config_t *config) {
     return modem;
 }
 
-relay_handle_t relay_app_start(const app_config_t *config) {
-    ESP_LOGI(TAG, "Инициализация реле");
+// ---- Точка входа приложения -------------------------------------------------
+
+// Обёртка под сигнатуру button_press_cb_t (void*) без каста указателя на функцию.
+static void on_button_press(void *user) {
+    controller_toggle_relay((app_controller_t *) user);
+}
+
+void app_start(const app_config_t *config) {
+    ESP_LOGI(TAG, "Инициализация устройства...");
     if (config == NULL) {
-        ESP_LOGE(TAG, "relay_app_start: конфиг не передан! Завершение.");
+        ESP_LOGE(TAG, "app_start: конфиг не передан! Завершение.");
+        abort();
+    }
+
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    // Индикатор: мигает во время инициализации, горит постоянно после.
+    led_handle_t led = led_init(config->indicator_pin);
+    if (led != NULL) {
+        led_set_state(led, LED_STATE_BLINK);
+    }
+
+    modem_handle_t modem = modem_app_start(config);
+    if (modem == NULL) {
         abort();
     }
 
@@ -73,62 +96,37 @@ relay_handle_t relay_app_start(const app_config_t *config) {
         abort();
     }
 
-    return relay;
-}
-
-volatile bool is_init_done = false;
-
-// Мигает, пока инициализируется переферия
-void led_blink_task(void *pvParameters) {
-    int led_pin = (int) pvParameters;
-
-    gpio_reset_pin(led_pin);
-    gpio_set_direction(led_pin, GPIO_MODE_OUTPUT);
-
-    int led_state = 1;
-
-    while (!is_init_done) {
-        gpio_set_level(led_pin, led_state);
-        led_state = !led_state;
-        vTaskDelay(pdMS_TO_TICKS(LED_BLINK_SYSTEM_INIT_DELAY_MS));
-    }
-
-    gpio_set_level(led_pin, 1);
-    
-    // таска завершает себя
-    vTaskDelete(NULL);
-} 
-
-void led_app_start(const app_config_t *config) {
-    ESP_LOGI(TAG, "Инициализация индикатора");
-    if (config == NULL) {
-        ESP_LOGE(TAG, "led_app_start: конфиг не передан! Завершение.");
+    // Контроллер бизнес-логики. Зависимости внедряются явно.
+    app_controller_t *controller = controller_create(modem, relay);
+    if (controller == NULL) {
+        ESP_LOGE(TAG, "Не удалось создать контроллер!");
         abort();
     }
 
-    xTaskCreate(led_blink_task, "led_blink_task", 2048, (void *) config->indicator_pin, 5, NULL);
-}
-
-void app_start(const app_config_t *config) {
-    ESP_LOGI(TAG, "Инициализация устройства...");
-
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    led_app_start(config);
-    modem_handle_t modem = modem_app_start(config);
-    relay_handle_t relay = relay_app_start(config);
-
-    // Запускаем MQTT и регистрируем обработчик команд
-    mqtt_handle_t mqtt = mqtt_app_start(config);
+    // MQTT: callback и контекст (контроллер) хранятся внутри объекта mqtt.
+    mqtt_handle_t mqtt = mqtt_app_start(
+        &config->mqtt_config,
+        controller_handle_command,
+        controller
+    );
     if (mqtt == NULL) {
-        ESP_LOGW(TAG, "MQTT не инициализирован: пропускаем регистрацию команд");
-    } else {
-        // инициализируем обработчик команд с зависимостями
-        if (command_handler_init(modem, relay, mqtt) == ESP_OK) {
-            mqtt_set_command_callback(mqtt, command_handler_process);
+        ESP_LOGE(TAG, "Не удалось запустить MQTT!");
+        abort();
+    }
+    controller_set_mqtt(controller, mqtt);
+
+    // Кнопка (опционально): нажатие переключает реле.
+    if (config->button_pin >= 0) {
+        button_handle_t button = button_init(
+            config->button_pin, on_button_press, controller);
+        if (button == NULL) {
+            ESP_LOGW(TAG, "Не удалось инициализировать кнопку");
         }
     }
 
-    is_init_done = true;
+    if (led != NULL) {
+        led_set_state(led, LED_STATE_ON);
+    }
+
+    ESP_LOGI(TAG, "Инициализация завершена");
 }

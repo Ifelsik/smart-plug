@@ -21,4 +21,6 @@ esp_err_t modem_driver_start_network(modem_handle_t handle, uint32_t timeout);
 
 esp_err_t modem_driver_get_signal_quality(modem_handle_t handle, int *rssi);
 
+void modem_driver_destroy(modem_handle_t handle);
+
 #endif
