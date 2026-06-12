@@ -15,8 +15,8 @@
 #include "mqtt.h"
 #include "controller.h"
 
-#define MODEM_DC_DC_EN_DELAY_MS 2000
-#define MODEM_PWR_KEY_DELAY_MS 10000
+#define MODEM_DC_DC_EN_DELAY_MS 1500
+#define MODEM_PWR_KEY_DELAY_MS 1000
 #define MODEM_START_NETWORK_TIMEOUT_MS 30000
 
 static const char *TAG = "APP";
