@@ -11,6 +11,9 @@
 // события модема
 #define MODEM_CONNECTED_BIT BIT0
 
+#define MODEM_SYNC_RETRIES_COUNT 5
+#define MODEM_SYNC_RETRY_DELAY_MS 1000
+
 static const char *TAG = "MODEM_DRIVER";
 
 struct modem_ctx_t {
@@ -97,7 +100,16 @@ esp_err_t modem_driver_start_network(modem_handle_t handle, uint32_t timeout_ms)
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (esp_modem_sync(handle->dce) != ESP_OK) {
+    esp_err_t modem_err;
+    for (int try = 1; try <= MODEM_SYNC_RETRIES_COUNT; try++) {
+        modem_err = esp_modem_sync(handle->dce);
+        if (modem_err == ESP_OK) {
+            break;
+        }
+        ESP_LOGW(TAG, "Модем не ответил на AT-команды: %s! Попытка синхронизации %d из %d", esp_err_to_name(modem_err), try, MODEM_SYNC_RETRIES_COUNT);
+        vTaskDelay(pdMS_TO_TICKS(MODEM_SYNC_RETRY_DELAY_MS));
+    } 
+    if (modem_err != ESP_OK) {
         ESP_LOGE(TAG, "Модем не отвечает на AT-команды!");
         return ESP_FAIL;
     }
