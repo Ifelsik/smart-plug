@@ -1,4 +1,7 @@
 #include "relay.h"
+
+#include <stdlib.h>
+
 #include "driver/gpio.h"
 #include "esp_log.h"
 
@@ -10,7 +13,11 @@ struct relay_ctx_t {
 };
 
 relay_handle_t relay_init(int gpio_pin) {
-    struct relay_ctx_t* ctx = malloc(sizeof(struct relay_ctx_t));
+    struct relay_ctx_t* ctx = calloc(1, sizeof(struct relay_ctx_t));
+    if (ctx == NULL) {
+        ESP_LOGE(TAG, "Не удалось выделить память под реле");
+        return NULL;
+    }
 
     ctx->gpio_pin = gpio_pin;
     ctx->is_active = false;
@@ -19,14 +26,14 @@ relay_handle_t relay_init(int gpio_pin) {
     gpio_set_direction(gpio_pin, GPIO_MODE_OUTPUT);
     gpio_set_level(ctx->gpio_pin, 0);
 
-    ESP_LOGI(TAG, "Realy initialized on GPIO %d", gpio_pin);
+    ESP_LOGI(TAG, "Реле проинициализировано на GPIO %d", gpio_pin);
 
     return ctx;
 }
 
 void relay_set_state(relay_handle_t relay, bool state) {
     if (relay == NULL) {
-        ESP_LOGE(TAG, "Relay object is NULL");
+        ESP_LOGE(TAG, "Реле не проинициализировано");
         return;
     }
 
@@ -41,8 +48,16 @@ void relay_set_state(relay_handle_t relay, bool state) {
 
 bool relay_get_state(relay_handle_t relay) {
     if (relay == NULL) {
-        ESP_LOGE(TAG, "Relay object is NULL");
+        ESP_LOGE(TAG, "Реле не проинициализировано");
         return false;
     }
     return relay->is_active;
+}
+
+void relay_destroy(relay_handle_t relay) {
+    if (relay == NULL) {
+        return;
+    }
+    gpio_set_level(relay->gpio_pin, 0);
+    free(relay);
 }

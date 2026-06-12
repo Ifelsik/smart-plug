@@ -15,4 +15,7 @@ relay_handle_t relay_init(int gpio_pin);
 void relay_set_state(relay_handle_t relay, bool state);
 bool relay_get_state(relay_handle_t relay);
 
+// Деструктор реле.
+void relay_destroy(relay_handle_t relay);
+
 #endif
