@@ -73,8 +73,12 @@ modem_handle_t modem_driver_init(const modem_config_t *config) {
     dte_config.uart_config.rx_io_num = config->pin_rx;
     dte_config.uart_config.rts_io_num = config->pin_rts;
     dte_config.uart_config.cts_io_num = config->pin_cts;
-    // аппартный контроль потока
-    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_HW;
+    // Без аппаратного контроля потока. При FLOW_CONTROL_HW UART не передаёт,
+    // пока модем не выставит CTS, а модем по умолчанию его не выставляет
+    // (нужен AT+IFC=2,2) — получается дедлок ещё до первого AT. На стенде
+    // без CTS/RTS модем отвечал именно поэтому. Включать HW можно только
+    // ПОСЛЕ esp_modem_sync, отдельной командой и при исправной разводке CTS.
+    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_NONE;
 
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(config->apn);
 
