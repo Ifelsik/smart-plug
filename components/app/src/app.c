@@ -3,8 +3,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "driver/gpio.h"
-
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_netif.h"
@@ -15,8 +13,6 @@
 #include "mqtt.h"
 #include "controller.h"
 
-#define MODEM_DC_DC_EN_DELAY_MS 1500
-#define MODEM_PWR_KEY_DELAY_MS 1000
 #define MODEM_START_NETWORK_TIMEOUT_MS 30000
 
 static const char *TAG = "APP";
@@ -26,37 +22,24 @@ static const char *TAG = "APP";
 static modem_handle_t modem_app_start(const app_config_t *config) {
     ESP_LOGI(TAG, "Инициализация модема");
 
-    gpio_set_direction(config->modem_pwr_key_pin, GPIO_MODE_OUTPUT);
-    gpio_set_direction(config->dc_dc_enable_pin, GPIO_MODE_OUTPUT);
-    gpio_set_level(config->modem_pwr_key_pin, 0);
-    gpio_set_level(config->dc_dc_enable_pin, 0);
-
-    // включаем DC-DC преобразователь (питание модема 3.8В)
-    gpio_set_level(config->dc_dc_enable_pin, 1);
-    vTaskDelay(pdMS_TO_TICKS(MODEM_DC_DC_EN_DELAY_MS));
-
-    // подаём импульс на PWRKEY для включения модема
-    gpio_set_level(config->modem_pwr_key_pin, 1);
-    vTaskDelay(pdMS_TO_TICKS(MODEM_PWR_KEY_DELAY_MS));
-    gpio_set_level(config->modem_pwr_key_pin, 0);
-
+    // Питание, PWRKEY и холодный старт инкапсулированы в компоненте modem.
     modem_handle_t modem = modem_driver_init(&config->modem_config);
     if (modem == NULL) {
         ESP_LOGE(TAG, "Не удалось инициализировать модем!");
         return NULL;
     }
 
+    // Первая попытка подключения. Если не удалась — не страшно: фоновый надзор
+    // внутри компонента продолжит поднимать модем, ребут МК не нужен.
     if (modem_driver_start_network(modem, MODEM_START_NETWORK_TIMEOUT_MS) != ESP_OK) {
-        ESP_LOGE(TAG, "Не удалось поднять сеть модема!");
-        modem_driver_destroy(modem);
-        return NULL;
-    }
-
-    int signal_quality = 0;
-    if (modem_driver_get_signal_quality(modem, &signal_quality) == ESP_OK) {
-        ESP_LOGI(TAG, "Качество сигнала (RSSI): %d", signal_quality);
+        ESP_LOGW(TAG, "Сеть пока не поднята, надзор продолжит попытки в фоне");
     } else {
-        ESP_LOGW(TAG, "Не удалось получить RSSI!");
+        int signal_quality = 0;
+        if (modem_driver_get_signal_quality(modem, &signal_quality) == ESP_OK) {
+            ESP_LOGI(TAG, "Качество сигнала (RSSI): %d", signal_quality);
+        } else {
+            ESP_LOGW(TAG, "Не удалось получить RSSI!");
+        }
     }
 
     return modem;

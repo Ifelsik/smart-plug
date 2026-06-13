@@ -8,8 +8,6 @@
 typedef struct app_config_t {
     modem_config_t modem_config;
     mqtt_config_t mqtt_config;
-    int modem_pwr_key_pin;
-    int dc_dc_enable_pin;
     int relay_pin;
     int indicator_pin;
     int button_pin;     // GPIO кнопки; < 0 — кнопка отключена

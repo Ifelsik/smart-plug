@@ -22,10 +22,10 @@ void app_main(void) {
             .pin_tx = MODEM_TX,
             .pin_cts = MODEM_CTS,
             .pin_rts = MODEM_RTS,
+            .pin_pwrkey = MODEM_PWR_KEY_PIN,
+            .pin_dc_dc_en = PIN_DCDC_EN,
             .apn = "internet.tele2.ru"
         },
-        .modem_pwr_key_pin = MODEM_PWR_KEY_PIN,
-        .dc_dc_enable_pin = PIN_DCDC_EN,
         .mqtt_config = {
             .uri = "mqtt://broker.hivemq.com:1883",
             .cmd_topic = "thesis/plug/command",
