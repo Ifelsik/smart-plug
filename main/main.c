@@ -12,8 +12,7 @@
 #define RELAY_PIN          40   // реле K1 (через VT3)
 
 // GPIO кнопки. Пока не разведён в прошивке: -1 отключает компонент кнопки.
-// TODO: указать реальный GPIO кнопки по схеме (SB1/SB3) и заменить -1.
-#define BUTTON_PIN         (-1)
+#define BUTTON_PIN         8
 
 void app_main(void) {
     const app_config_t config = {
@@ -27,7 +26,7 @@ void app_main(void) {
             .apn = "internet.tele2.ru"
         },
         .mqtt_config = {
-            .uri = "mqtt://broker.hivemq.com:1883",
+            .uri = "mqtt://small.isgood.host:1883",
             .cmd_topic = "thesis/plug/command",
             .resp_topic = "thesis/plug/state"
         },
