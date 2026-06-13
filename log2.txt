@@ -1,0 +1,38 @@
+ (34849) MQTT_APP: Получены данные! topic=thesis/plug/command, data={"cmd": "status"}
+I (34859) MQTT_APP: Получена команда: status
+I (34859) CONTROLLER: Обработка команды: status
+I (34879) MQTT_APP: Сообщение отправлено в топик thesis/plug/state (msg_id=15072)
+I (34949) MQTT_APP: Необработанное событие MQTT: id=5
+I (35059) MQTT_APP: Получены данные! topic=thesis/plug/command, data={"cmd": "status"}
+I (35059) MQTT_APP: Получена команда: status
+I (35059) CONTROLLER: Обработка команды: status
+I (35079) MQTT_APP: Сообщение отправлено в топик thesis/plug/state (msg_id=10835)
+I (35079) MQTT_APP: Необработанное событие MQTT: id=5
+I (35169) MQTT_APP: Необработанное событие MQTT: id=5
+W (77989) CMUX: Failed to defragment longer payload (payload=885)
+W (77989) CMUX: Failed to defragment longer payload (payload=821)
+W (77999) CMUX: Failed to defragment longer payload (payload=757)
+W (78009) CMUX: Failed to defragment longer payload (payload=693)
+W (78009) CMUX: Failed to defragment longer payload (payload=629)
+W (78019) CMUX: Failed to defragment longer payload (payload=565)
+W (78019) CMUX: Failed to defragment longer payload (payload=501)
+E (144249) mqtt_client: No PING_RESP, disconnected
+W (144249) MQTT_APP: Отключено от MQTT брокера. Автоматическое переподключение...
+I (159249) MQTT_APP: Необработанное событие MQTT: id=7
+I (159529) MQTT_APP: Успешно подключено к MQTT брокеру!
+I (159619) MQTT_APP: Успешно подписались на топик! msg_id=562
+I (179109) MQTT_APP: Получены данные! topic=thesis/plug/command, data={"cmd": "relay_off"}
+I (179109) MQTT_APP: Получена команда: relay_off
+I (179119) CONTROLLER: Обработка команды: relay_off
+I (179119) MQTT_APP: Сообщение отправлено в топик thesis/plug/state (msg_id=63797)
+I (179269) MQTT_APP: Необработанное событие MQTT: id=5
+I (737179) MQTT_APP: Получены данные! topic=thesis/plug/command, data={"cmd": "relay_off"}
+I (737179) MQTT_APP: Получена команда: relay_off
+I (737189) CONTROLLER: Обработка команды: relay_off
+I (737199) MQTT_APP: Сообщение отправлено в топик thesis/plug/state (msg_id=18443)
+I (737299) MQTT_APP: Необработанное событие MQTT: id=5
+I (746369) MQTT_APP: Получены данные! topic=thesis/plug/command, data={"cmd": "status"}
+I (746369) MQTT_APP: Получена команда: status
+I (746369) CONTROLLER: Обработка команды: status
+I (746389) MQTT_APP: Сообщение отправлено в топик thesis/plug/state (msg_id=41858)
+I (746489) MQTT_APP: Необработанное событие MQTT: id=5
